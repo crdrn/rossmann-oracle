@@ -1,1 +1,3 @@
 # rossmann-oracle
+## Libraries
+- `pandas`
