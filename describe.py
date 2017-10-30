@@ -3,10 +3,12 @@ import pandas as pd
 
 CSV_TRAIN = 'data/train_v2.csv'
 CSV_TEST = 'data/test_v2.csv'
+CSV_STORE = 'data/store.csv'
 
 # Load the data into a DataFrame
 train = pd.read_csv(CSV_TRAIN, low_memory=False)
 test = pd.read_csv(CSV_TEST, low_memory=False)
+store = pd.read_csv(CSV_STORE, low_memory=False)
 
 def summarize(df):
     print(train.describe())
@@ -23,3 +25,7 @@ summarize(train)
 print('\n\n')
 print(CSV_TEST)
 summarize(test)
+
+print('\n\n')
+print(CSV_STORE)
+summarize(store)
