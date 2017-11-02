@@ -9,9 +9,12 @@ import sys
 import tempfile
 import tensorflow as tf
 
-LABELS = ['Store','DayOfWeek','Date','Sales','Customers','Open','Promo','StateHoliday','SchoolHoliday','StoreType',
+TRAIN_LABELS = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday', 'StoreType',
           'Assortment','CompetitionDistance','CompetitionOpenSinceMonth','CompetitionOpenSinceYear','Promo2',
           'Promo2SinceWeek','Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']
+TEST_LABELS = ['Store', 'DayOfWeek', 'Date', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday',
+               'StoreType', 'Assortment','CompetitionDistance','CompetitionOpenSinceMonth','CompetitionOpenSinceYear',
+               'Promo2', 'Promo2SinceWeek','Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']
 
 # Boolean features
 is_open = tf.feature_column.numeric_column("Open")
@@ -66,12 +69,12 @@ def build_estimator(model_dir, model_type):
     return m
 
 
-def input_fn(data_file, num_epochs, shuffle):
+def input_fn_train(data_file, num_epochs, shuffle):
     """Input builder function."""
     df_data = pd.read_csv(
         tf.gfile.Open(data_file),
         skipinitialspace=False,
-        names=LABELS,
+        names=TRAIN_LABELS,
         engine="python",
         skiprows=1)
     # remove NaN elements
@@ -86,6 +89,23 @@ def input_fn(data_file, num_epochs, shuffle):
         shuffle=shuffle,
         num_threads=1)
 
+def input_fn_test(data_file, num_epochs, shuffle):
+    """Input builder function."""
+    df_data = pd.read_csv(
+        tf.gfile.Open(data_file),
+        skipinitialspace=False,
+        names=TEST_LABELS,
+        engine="python",
+        skiprows=1)
+    # remove NaN elements
+    df_data = df_data.dropna(how="any", axis=0)
+
+    return tf.estimator.inputs.pandas_input_fn(
+        x=df_data,
+        batch_size=100,
+        num_epochs=num_epochs,
+        shuffle=shuffle,
+        num_threads=1)
 
 def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_file_name):
     """Train and evaluate the model."""
@@ -93,21 +113,22 @@ def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_fil
 
     m = build_estimator(model_dir, model_type)
     # set num_epochs to None to get infinite stream of data.
-    m.train(input_fn=input_fn(train_file_name, num_epochs=None, shuffle=True),
+    m.train(input_fn=input_fn_train(train_file_name, num_epochs=None, shuffle=True),
             steps=train_steps)
     # set steps to None to run evaluation until all data consumed.
-    print("TRAINING DONE")
     results = m.evaluate(input_fn=
-                         input_fn(test_file_name, num_epochs=1, shuffle=False), steps=None)
+                         input_fn_train(test_file_name, num_epochs=1, shuffle=False), steps=None)
     print("model directory = %s" % model_dir)
     for key in sorted(results):
         print("%s: %s" % (key, results[key]))
 
+    return m
 
 def main(_):
-    train_and_eval(FLAGS.model_dir, FLAGS.model_type, FLAGS.train_steps,
+    model = train_and_eval(FLAGS.model_dir, FLAGS.model_type, FLAGS.train_steps,
                    FLAGS.train_data, FLAGS.test_data)
-
+    predictions = model.predict(input_fn_test(CSV_TEST, num_epochs=1, shuffle=False),predict_keys=['Sales'])
+    list(predictions)
 
 FLAGS = None
 
