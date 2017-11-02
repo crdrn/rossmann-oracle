@@ -1,9 +1,6 @@
 #!/usr/bin/python
 import pandas as pd
-
-CSV_TRAIN = 'data/train_v2.csv'
-CSV_TEST = 'data/test_v2.csv'
-CSV_STORE = 'data/store.csv'
+from settings import CSV_TRAIN, CSV_TEST, CSV_STORE
 
 # Load the data into a DataFrame
 train = pd.read_csv(CSV_TRAIN, low_memory=False)
