@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from settings import *
 
 import argparse
 import pandas as pd
@@ -8,12 +9,9 @@ import sys
 import tempfile
 import tensorflow as tf
 
-CSV_TRAIN = 'data/train_v2.csv'
-CSV_TEST = 'data/test_v2.csv'
-CSV_STORE = 'data/store.csv'
-
-LABELS = ["Store", "DayOfWeek", "Date", "Sales", "Customers", "Open", "Promo",
-          "StateHoliday", "SchoolHoliday"]
+LABELS = ['Store','DayOfWeek','Date','Sales','Customers','Open','Promo','StateHoliday','SchoolHoliday','StoreType',
+          'Assortment','CompetitionDistance','CompetitionOpenSinceMonth','CompetitionOpenSinceYear','Promo2',
+          'Promo2SinceWeek','Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']
 
 # Boolean features
 is_open = tf.feature_column.numeric_column("Open")
@@ -45,6 +43,7 @@ assortment = tf.feature_column.categorical_column_with_vocabulary_list(
 
 base_columns = [is_open, has_day_promo, school_holiday, state_holiday, day, customers]
 crossed_columns = []
+deep_columns = []
 
 
 def build_estimator(model_dir, model_type):
@@ -77,7 +76,7 @@ def input_fn(data_file, num_epochs, shuffle):
         skiprows=1)
     # remove NaN elements
     df_data = df_data.dropna(how="any", axis=0)
-    y_values = df_data["Sales"]
+    y_values = df_data['Sales']
 
     return tf.estimator.inputs.pandas_input_fn(
         x=df_data,
@@ -85,20 +84,19 @@ def input_fn(data_file, num_epochs, shuffle):
         batch_size=100,
         num_epochs=num_epochs,
         shuffle=shuffle,
-        num_threads=5)
+        num_threads=1)
 
 
-def train_and_eval(model_dir, model_type, train_steps, train_data, test_data):
+def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_file_name):
     """Train and evaluate the model."""
-    train_file_name = train_data
-    test_file_name = test_data
     model_dir = tempfile.mkdtemp() if not model_dir else model_dir
 
     m = build_estimator(model_dir, model_type)
     # set num_epochs to None to get infinite stream of data.
-    m.train(input_fn=input_fn(train_file_name, num_epochs=200, shuffle=True),
+    m.train(input_fn=input_fn(train_file_name, num_epochs=None, shuffle=True),
             steps=train_steps)
     # set steps to None to run evaluation until all data consumed.
+    print("TRAINING DONE")
     results = m.evaluate(input_fn=
                          input_fn(test_file_name, num_epochs=1, shuffle=False), steps=None)
     print("model directory = %s" % model_dir)
@@ -131,19 +129,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--train_steps",
         type=int,
-        default=2000,
+        default=5000,
         help="Number of training steps."
     )
     parser.add_argument(
         "--train_data",
         type=str,
-        default=CSV_TRAIN,
+        default=CSV_SMALL_TRAIN,
         help="Path to the training data."
     )
     parser.add_argument(
         "--test_data",
         type=str,
-        default=CSV_TEST,
+        default=CSV_SMALL_TEST,
         help="Path to the test data."
     )
     FLAGS, unparsed = parser.parse_known_args()
