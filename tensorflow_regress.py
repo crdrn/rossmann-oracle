@@ -132,8 +132,8 @@ def format_predictions(predictions, datacsv, outfile='output.csv'):
     # Convert all predictions when store is closed to 1
     is_open = pd.read_csv(datacsv)['Open']
     df = pd.DataFrame(results, columns=['Sales'])
-    df.where(is_open == 1, 1)
-
+    df.where(is_open == 1, 1, inplace=True)
+    df.where(df != 0, 1, inplace=True)
     # +1 to the id so we start from 1 instead of 0
     df.index += 1
 
