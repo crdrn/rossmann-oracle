@@ -34,6 +34,12 @@ def one_hot_encode(df):
         df = df.join(one_hot)
     return df
 
+def generate_month(df):
+    df['Month'] = df['Date'].str[5:7]
+    df['Month'] = df['Month'].astype(int)
+    df.drop('Date', axis=1)
+    return df
+    
 def generate_is_in_competition(df):
     # construct datestamp YYYY-MM-DD for date of competition's opening
     df['Date'] = pd.to_datetime(df['Date'])
