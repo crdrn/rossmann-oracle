@@ -127,15 +127,20 @@ def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_fil
 
     return m
 
+
+def format_predictions(predictions):
+    results = [p['predictions'][0] for p in list(predictions)]
+    df = pd.DataFrame(results, columns=["Sales"])
+    df.to_csv('output.csv',index_label='Id')
+
+
 def main(_):
     model = train_and_eval(FLAGS.model_dir, FLAGS.model_type, FLAGS.train_steps,
                            FLAGS.train_data, FLAGS.test_data)
     print(model.get_variable_names())
 
     predictions = model.predict(input_fn=input_fn_test(CSV_TREATED_TEST, num_epochs=1, shuffle=False))
-    sales = [p['Sales'] for p in list(predictions)]
-    print(sales)
-
+    format_predictions(predictions)
 
 FLAGS = None
 
