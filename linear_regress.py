@@ -1,0 +1,1 @@
+from settings import CSV_SMALL_
