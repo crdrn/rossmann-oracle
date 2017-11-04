@@ -43,8 +43,19 @@ is_in_competition = tf.feature_column.numeric_column('IsInCompetition')
 
 base_columns = [is_open, has_day_promo, school_holiday, state_holiday, day, customers, store_type, assortment,
                 is_in_competition]
+
 crossed_columns = []
-deep_columns = []
+
+deep_columns = [tf.feature_column.indicator_column(is_open),
+                tf.feature_column.indicator_column(has_day_promo),
+                tf.feature_column.indicator_column(school_holiday),
+                tf.feature_column.indicator_column(state_holiday),
+                tf.feature_column.indicator_column(day),
+                customers,
+                tf.feature_column.indicator_column(store_type),
+                tf.feature_column.indicator_column(assortment),
+                tf.feature_column.indicator_column(is_in_competition),
+                ]
 
 
 def build_estimator(model_dir, model_type):
