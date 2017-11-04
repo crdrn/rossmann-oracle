@@ -21,34 +21,30 @@ def fix_datatypes(df):
     #  fix missing and non-numeric data
 
     holidays = pd.get_dummies(df['StateHoliday'])
-    print(holidays)
     if 'a' in df.columns:
-        df['Holiday'] = holidays['0'] + holidays['a']
+        df.loc[:,'Holiday'] = holidays['0'] + holidays['a']
     elif '0' in df.columns:
-        df['Holiday'] = holidays['0']
+        df.loc[:,'Holiday'] = holidays['0']
     else:
-        df['Holidays'] = 0
+        df.loc[:,'Holidays'] = 0
 
-    if 'c' in df.columns:
-        df['Christmas'] = holidays['c']
-    else:
-        df['Christmas'] = 0
+    df.loc[:,'Christmas'] = holidays['c'] if 'c' in df.columns else 0
 
-    df['CompetitionDistance'] = np.log(df['CompetitionDistance'].fillna(99999))
+    df.loc[:,'CompetitionDistance'] = np.log(df['CompetitionDistance'].fillna(99999))
 
     assortment = pd.get_dummies(df['Assortment'])
-    df['AssortmentA'] = assortment['a'] if 'a' in assortment else 0
-    df['AssortmentB'] = assortment['b'] if 'b' in assortment else 0
-    df['AssortmentC'] = assortment['c'] if 'c' in assortment else 0
+    df.loc[:,'AssortmentA'] = assortment['a'] if 'a' in assortment else 0
+    df.loc[:,'AssortmentB'] = assortment['b'] if 'b' in assortment else 0
+    df.loc[:,'AssortmentC'] = assortment['c'] if 'c' in assortment else 0
 
     storetype = pd.get_dummies(df['StoreType'])
-    df['storetypeA'] = storetype['a'] if 'a' in storetype else 0
-    df['storetypeB'] = storetype['b'] if 'b' in storetype else 0
-    df['storetypeC'] = storetype['c'] if 'c' in storetype else 0
-    df['storetypeD'] = storetype['d'] if 'd' in storetype else 0
+    df.loc[:,'storetypeA'] = storetype['a'] if 'a' in storetype else 0
+    df.loc[:,'storetypeB'] = storetype['b'] if 'b' in storetype else 0
+    df.loc[:,'storetypeC'] = storetype['c'] if 'c' in storetype else 0
+    df.loc[:,'storetypeD'] = storetype['d'] if 'd' in storetype else 0
 
     date = pd.to_datetime(df['Date'])
-    df['Day'] = date.map(lambda x: x.month)
+    df.loc[:,'Day'] = date.map(lambda x: x.month)
 
     df.drop(labels=['StateHoliday', 'Assortment', 'StoreType', 'Date'], axis=1, inplace=True)
 
