@@ -9,12 +9,14 @@ import sys
 import tempfile
 import tensorflow as tf
 
-TRAIN_LABELS = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday', 'StoreType',
-          'Assortment','CompetitionDistance','CompetitionOpenSinceMonth','CompetitionOpenSinceYear','Promo2',
-          'Promo2SinceWeek','Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']
-TEST_LABELS = ['Store', 'DayOfWeek', 'Date', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday',
-               'StoreType', 'Assortment','CompetitionDistance','CompetitionOpenSinceMonth','CompetitionOpenSinceYear',
-               'Promo2', 'Promo2SinceWeek','Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']
+TRAIN_LABELS = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday', 'SchoolHoliday',
+                'StoreType','Assortment', 'CompetitionDistance', 'CompetitionOpenSinceMonth',
+                'CompetitionOpenSinceYear', 'Promo2','Promo2SinceWeek', 'Promo2SinceYear', 'PromoInterval',
+                'DateOfCompetitionOpen', 'IsInCompetition']
+TEST_LABELS = ['Store','DayOfWeek','Date','Customers','Open','Promo','StateHoliday','SchoolHoliday',
+               'StoreType','Assortment','CompetitionDistance','CompetitionOpenSinceMonth',
+               'CompetitionOpenSinceYear','Promo2','Promo2SinceWeek','Promo2SinceYear','PromoInterval',
+               'DateOfCompetitionOpen','IsInCompetition']
 
 # Boolean features
 is_open = tf.feature_column.numeric_column("Open")
@@ -71,41 +73,42 @@ def build_estimator(model_dir, model_type):
 
 def input_fn_train(data_file, num_epochs, shuffle):
     """Input builder function."""
-    df_data = pd.read_csv(
-        tf.gfile.Open(data_file),
+    df_data = pd.read_csv(data_file,
         skipinitialspace=False,
         names=TRAIN_LABELS,
-        engine="python",
         skiprows=1)
     # remove NaN elements
     df_data = df_data.dropna(how="any", axis=0)
     y_values = df_data['Sales']
 
     return tf.estimator.inputs.pandas_input_fn(
-        x=df_data,
+        x=df_data.drop('Sales', axis=1),
         y=y_values,
+        target_column='Sales',
         batch_size=100,
         num_epochs=num_epochs,
         shuffle=shuffle,
         num_threads=1)
 
+
 def input_fn_test(data_file, num_epochs, shuffle):
     """Input builder function."""
-    df_data = pd.read_csv(
-        tf.gfile.Open(data_file),
+    df_data = pd.read_csv(data_file,
         skipinitialspace=False,
         names=TEST_LABELS,
         engine="python",
         skiprows=1)
     # remove NaN elements
     df_data = df_data.dropna(how="any", axis=0)
+    df_data['StateHoliday'] = df_data["StateHoliday"].astype(str)
 
     return tf.estimator.inputs.pandas_input_fn(
         x=df_data,
-        batch_size=100,
         num_epochs=num_epochs,
+        target_column='Sales',
         shuffle=shuffle,
         num_threads=1)
+
 
 def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_file_name):
     """Train and evaluate the model."""
@@ -126,9 +129,13 @@ def train_and_eval(model_dir, model_type, train_steps, train_file_name, test_fil
 
 def main(_):
     model = train_and_eval(FLAGS.model_dir, FLAGS.model_type, FLAGS.train_steps,
-                   FLAGS.train_data, FLAGS.test_data)
-    predictions = model.predict(input_fn_test(CSV_TEST, num_epochs=1, shuffle=False),predict_keys=['Sales'])
-    list(predictions)
+                           FLAGS.train_data, FLAGS.test_data)
+    print(model.get_variable_names())
+
+    predictions = model.predict(input_fn=input_fn_test(CSV_TREATED_TEST, num_epochs=1, shuffle=False))
+    sales = [p['Sales'] for p in list(predictions)]
+    print(sales)
+
 
 FLAGS = None
 
