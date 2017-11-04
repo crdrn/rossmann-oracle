@@ -29,6 +29,7 @@ def preprocess(df):
     df['CompetitionDistance'] = np.log(df['CompetitionDistance'] + 1)
 
     df = generate_features.one_hot_encode(df)
+    df = generate_features.generate_month(df)
     return df
 
 

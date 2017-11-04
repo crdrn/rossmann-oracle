@@ -37,7 +37,7 @@ def one_hot_encode(df):
 def generate_month(df):
     df['Month'] = df['Date'].str[5:7]
     df['Month'] = df['Month'].astype(int)
-    df.drop('Date', axis=1)
+    df = df.drop('Date', axis=1)
     return df
     
 def generate_is_in_competition(df):
