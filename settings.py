@@ -15,3 +15,7 @@ TRAIN_FEATURES = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'P
                   'SchoolHoliday', 'StoreType','Assortment', 'CompetitionDistance', 'IsInCompetition', 'Promo2']
 TEST_FEATURES = list(TRAIN_FEATURES)
 TEST_FEATURES.remove('Sales')
+ALL_FEATURES=['Store','DayOfWeek','Date','Sales','Customers','Open','Promo','StateHoliday',
+              'SchoolHoliday','StoreType','Assortment','CompetitionDistance',
+              'CompetitionOpenSinceMonth','CompetitionOpenSinceYear','Promo2','Promo2SinceWeek',
+              'Promo2SinceYear','PromoInterval','DateOfCompetitionOpen','IsInCompetition']

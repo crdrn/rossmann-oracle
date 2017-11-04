@@ -13,6 +13,7 @@ import tensorflow as tf
 is_open = tf.feature_column.numeric_column('Open')
 has_day_promo = tf.feature_column.numeric_column('Promo')
 school_holiday = tf.feature_column.numeric_column('SchoolHoliday')
+is_in_competition = tf.feature_column.numeric_column('IsInCompetition')
 
 # Continuous numeric base features
 sales = tf.feature_column.numeric_column('Sales')
@@ -21,6 +22,7 @@ customers = tf.feature_column.numeric_column('Customers')
 # Date-related features -- use bucketization or convert ?
 state_holiday = tf.feature_column.categorical_column_with_vocabulary_list(
     'StateHoliday', vocabulary_list=['0', 'a', 'c'])
+state_holiday_deep = tf.feature_column.indicator_column(state_holiday)
 day = tf.feature_column.numeric_column('DayOfWeek')
 
 """
@@ -36,15 +38,16 @@ has_store_promo = tf.feature_column.numeric_column('Promo2')
 # Categorical features
 store_type = tf.feature_column.categorical_column_with_vocabulary_list(
     'StoreType', vocabulary_list=['c', 'a', 'd', 'b'])
+store_type_deep = tf.feature_column.indicator_column(store_type)
 assortment = tf.feature_column.categorical_column_with_vocabulary_list(
     'Assortment', vocabulary_list=['a' 'c' 'b'])
-
-is_in_competition = tf.feature_column.numeric_column('IsInCompetition')
+assortment_deep = tf.feature_column.indicator_column(assortment)
 
 base_columns = [is_open, has_day_promo, school_holiday, state_holiday, day, customers, store_type, assortment,
                 is_in_competition]
 crossed_columns = []
-deep_columns = []
+deep_columns = [is_open, has_day_promo, school_holiday, state_holiday_deep, day, customers, store_type_deep,
+                assortment_deep, is_in_competition]
 
 
 def build_estimator(model_dir, model_type):
@@ -136,6 +139,23 @@ def format_predictions(predictions, outfile='output.csv'):
     df.to_csv(outfile, index_label='Id')
     return
 
+def evaluate_predictions(predictions, actual):
+    """ Returns RMSPE given lists of predictions and corresponding actual sales """
+    sum = 0
+    for estimate, real in zip(predictions, actual):
+        real = 1 if real==0 else real
+        sum += pow((float(real) - estimate)/real, 2)
+    return pow(sum/len(actual), 0.5)
+
+
+def evaluate_model(model, testcsv):
+    estimates = model.predict(input_fn=input_fn_test(testcsv, num_epochs=1, shuffle=False))
+    estimates = [p['predictions'][0] for p in list(estimates)]
+
+    df = pd.read_csv(testcsv)
+    actual = df['Sales']
+
+    return evaluate_predictions(estimates, actual)
 
 def main(_):
     print('Training %s model on\ntrain = %s\ntest = %s\nfor %s steps' % (FLAGS.model_type, FLAGS.train_data, FLAGS.test_data,
@@ -143,6 +163,10 @@ def main(_):
     # train da model
     model = train_model(FLAGS.model_dir, FLAGS.model_type, FLAGS.train_steps, FLAGS.train_data)
     print(model.get_variable_names())
+
+    # evaluate model
+    rmspe = evaluate_model(model, settings.CSV_SMALL_TEST)
+    print("RMSPE is: {}".format(rmspe))
 
     # try predicting
     predictions = model.predict(input_fn=input_fn_test(settings.CSV_TREATED_TEST, num_epochs=1, shuffle=False))
@@ -163,7 +187,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model-type",
         type=str,
-        default="wide",
+        default="deep",
         help="Valid model types: {'wide', 'deep', 'wide_n_deep'}."
     )
     parser.add_argument(
