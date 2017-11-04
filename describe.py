@@ -16,13 +16,13 @@ def summarize(df):
     return
 
 
-print(CSV_TRAIN)
-summarize(train)
+#print(CSV_TRAIN)
+#summarize(train)
 
-print('\n\n')
-print(CSV_TEST)
-summarize(test)
+#print('\n\n')
+#print(CSV_TEST)
+#summarize(test)
 
-print('\n\n')
-print(CSV_STORE)
-summarize(store)
+#print('\n\n')
+#print(CSV_STORE)
+#summarize(store)

@@ -10,6 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import settings
 import sys
+import generate_features
 
 SEED = 3244
 DIM_INPUT = 29
@@ -27,25 +28,7 @@ def preprocess(df):
     df['Customers'] = np.log(df['Customers'] + 1)
     df['CompetitionDistance'] = np.log(df['CompetitionDistance'] + 1)
 
-    # one hot encode categorical variables
-    df['StateHoliday'] = df['StateHoliday'].astype(str)
-    df['DayOfWeek'] = df['DayOfWeek'].replace([1, 2, 3, 4, 5, 6, 7], ['day_mon', 'day_tue', 'day_wed', 'day_thur',
-                                                                      'day_fri', 'day_sat', 'day_sun'])
-    df['SchoolHoliday'] = df['SchoolHoliday'].replace([0, 1], ['sch_hol_none', 'sch_hol_yes'])
-    df['Open'] = df['Open'].replace([0, 1], ['open_no', 'open_yes'])
-    df['Promo'] = df['Promo'].replace([0, 1], ['day_promo_none', 'day_promo_yes'])
-    df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'c'], ['state_hol_none', 'state_hol_public',
-                                                                      'state_hol_christmas'])
-    df['StoreType'] = df['StoreType'].replace(['a', 'b', 'c', 'd'], ['store_type_a', 'store_type_b', 'store_type_c',
-                                                                     'store_type_d'])
-    df['Assortment'] = df['Assortment'].replace(['a', 'b', 'c'], ['assortment_a', 'assortment_b', 'assortment_c'])
-    df['IsInCompetition'] = df['IsInCompetition'].replace([0, 1], ['in_competition', 'not_in_competition'])
-    df['Promo2'] = df['Promo2'].replace([0, 1], ['promo2_none', 'promo2_yes'])
-
-    for var in settings.CATEGORICAL_FEATURES:
-        one_hot = pd.get_dummies(df[var])
-        df = df.drop(var, axis=1)
-        df = df.join(one_hot)
+    df = generate_features.one_hot_encode(df)
     return df
 
 
@@ -84,9 +67,8 @@ def make_model():
     # create model
     model = Sequential()
     model.add(Dense(50, input_dim=DIM_INPUT, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(100, kernel_initializer='normal'))
+    model.add(Dense(500, kernel_initializer='normal'))
     model.add(Dense(50, kernel_initializer='normal'))
-    model.add(Dense(25, kernel_initializer='normal'))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
     return model
