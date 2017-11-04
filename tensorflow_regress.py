@@ -126,9 +126,13 @@ def train_model(model_dir, model_type, train_steps, train_file_name):
     return m
 
 
-def format_predictions(predictions, outfile='output.csv'):
+def format_predictions(predictions, datacsv, outfile='output.csv'):
     results = [p['predictions'][0] for p in list(predictions)]
+
+    # Convert all predictions when store is closed to 1
+    is_open = pd.read_csv(datacsv)['Open']
     df = pd.DataFrame(results, columns=['Sales'])
+    df.where(is_open == 1, 1)
 
     # +1 to the id so we start from 1 instead of 0
     df.index += 1
@@ -146,7 +150,7 @@ def main(_):
 
     # try predicting
     predictions = model.predict(input_fn=input_fn_test(settings.CSV_TREATED_TEST, num_epochs=1, shuffle=False))
-    format_predictions(predictions, FLAGS.output)
+    format_predictions(predictions, settings.CSV_TREATED_TEST, FLAGS.output)
     return
 
 
