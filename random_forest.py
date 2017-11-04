@@ -18,7 +18,6 @@ def format_output(results, datacsv, outfile="output.csv"):
     return
 
 def fix_datatypes(df):
-    return
     #  fix missing and non-numeric data
 
     holidays = pd.get_dummies(df['StateHoliday'])
@@ -52,9 +51,6 @@ def fix_datatypes(df):
     df['Day'] = date.map(lambda x: x.month)
 
     df.drop(labels=['StateHoliday', 'Assortment', 'StoreType', 'Date'], axis=1, inplace=True)
-
-    for col in df:
-        print('%13s %15s %s' % (col, df[col].dtype, df[col].unique()))
 
     return df
 
