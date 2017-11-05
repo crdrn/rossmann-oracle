@@ -54,17 +54,19 @@ def prepare_data(df, to_drop, has_y=False):
     :param has_y: (bool) does the df contain the y variable of interest?
     :return:
     """
-    # df = generate_month_feature(df)
+    #df = generate_month_feature(df)
+    #df['Months2December'] = 12 - df['Month']
+    #df.drop('Month', axis=1, inplace=True)
 
     # drop features we don't need
     df = df.drop(to_drop, axis=1)
 
     # recode StateHoliday to something numeric
     df['StateHoliday'] = df['StateHoliday'].astype(str)
-    df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'c'], [0, 1, 2])
+    df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'b', 'c'], [0, 1, 2, 3])
 
     # norm customers using log_2
-    df['Customers'] = df['Customers'].replace([0], [1])  # prevent nans
+    df['Customers'] = df['Customers'].replace([0], [0.0001])  # prevent nans
     df['Customers'] = np.log2(df['Customers'])
 
     # one-hot encode dayofweek
@@ -75,7 +77,7 @@ def prepare_data(df, to_drop, has_y=False):
 
     # normalize sales using log_2 (only applicable for training data)
     if has_y:
-        df['Sales'] = df['Sales'].replace([0], [1])  # prevent nans
+        df['Sales'] = df['Sales'].replace([0], [0.0001])  # prevent nans
         df['Sales'] = np.log2(df['Sales'])
 
     return df
@@ -176,10 +178,10 @@ def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
     closed_store_ids, test_df = split_open_closed(test_df)
 
     train_y = train_df['Sales']
-    train_x = train_df.drop(['Id', 'Sales', 'Open'], axis=1)
+    train_x = train_df.drop(['Id', 'Sales', 'Open', 'Store'], axis=1)
 
     open_store_ids = test_df['Id']
-    test_x = test_df.drop(['Id'], axis=1)
+    test_x = test_df.drop(['Id', 'Store'], axis=1)
 
     print('Features: %s' % train_x.columns.values.tolist())
     model = LinearRegression()
@@ -198,4 +200,4 @@ def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
 
 
 train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=False)
-train_monolithic_rf_model(train, test, outfile='rossmann-monolithic-rf.csv')
+#train_monolithic_rf_model(train, test, outfile='rossmann-monolithic-rf.csv')
