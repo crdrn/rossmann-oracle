@@ -70,7 +70,7 @@ def prepare_data(df, to_drop, has_y=False):
     df['Customers'] = np.log2(df['Customers'])
 
     # one-hot encode dayofweek
-    df = one_hot_encode(df, 'DayOfWeek', 'Day', ['Day_7'])
+    df = one_hot_encode(df, 'DayOfWeek', 'Day', excludes=None)
 
     # append Id column
     df['Id'] = df.index
