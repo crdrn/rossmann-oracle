@@ -63,7 +63,7 @@ def prepare_data(df, to_drop, has_y=False):
     df['StateHoliday'] = df['StateHoliday'].astype(str)
     df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'c'], [0, 1, 2])
 
-    # norm customers
+    # norm customers using log_2
     df['Customers'] = df['Customers'].replace([0], [1])  # prevent nans
     df['Customers'] = np.log2(df['Customers'])
 
@@ -73,7 +73,7 @@ def prepare_data(df, to_drop, has_y=False):
     # append Id column
     df['Id'] = df.index
 
-    # normalize sales (only applicable for training data)
+    # normalize sales using log_2 (only applicable for training data)
     if has_y:
         df['Sales'] = df['Sales'].replace([0], [1])  # prevent nans
         df['Sales'] = np.log2(df['Sales'])
@@ -98,9 +98,6 @@ train = prepare_data(train, to_drop=['Date'], has_y=True)
 train = remove_closed_stores(train)
 
 test = prepare_data(test, to_drop=['Date'], has_y=False)
-
-
-# print(train.head(n=10))
 
 
 def split_open_closed(test_df):
@@ -129,6 +126,7 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
     :param outfile: name of the output file to write predictions to
     :return:
     """
+    print_feature_list = True
     print('\nTraining many RF model')
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
@@ -142,6 +140,11 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
 
         # define training and testing sets
         train_x = current_store.drop(['Id', 'Sales', 'Store', 'Open'], axis=1)
+
+        if print_feature_list:
+            print('Features: %s' % train_x.columns.values.tolist())
+            print_feature_list = False
+
         train_y = current_store['Sales']
 
         test_x = test_stores[i].copy()
@@ -178,6 +181,7 @@ def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
     open_store_ids = test_df['Id']
     test_x = test_df.drop(['Id'], axis=1)
 
+    print('Features: %s' % train_x.columns.values.tolist())
     model = LinearRegression()
     model.fit(train_x, train_y)
 
