@@ -1,7 +1,6 @@
 #!/usr/bin/python3.5
 import pandas as pd
 import numpy as np
-import settings
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from keras.models import Sequential
@@ -34,24 +33,7 @@ def one_hot_encode(df, target, prefix, excludes=None):
     return df.join(dummy)
 
 
-def generate_month_feature(df):
-    df['Month'] = df['Date'].str[5:7]
-    df['Month'] = df['Month'].astype(int)
-    return df
-
-
-def generate_year_feature(df):
-    df['Year'] = df['Date'].str[0:5]
-    df['Year'] = df['Year'].astype(int)
-    return df
-
-
-def get_month_numeric(month):
-    dictionary = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7,
-                  'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
-    return dictionary.get(month, default=None)
-
-def prepare_data(df, to_drop, has_y=False, store=None):
+def prepare_data(df, to_drop, has_y=False):
     """
     Performs the common train/test feature engineering procedures
     :param df:
@@ -59,17 +41,9 @@ def prepare_data(df, to_drop, has_y=False, store=None):
     :param has_y: (bool) does the df contain the y variable of interest?
     :return:
     """
-    #df = generate_month_feature(df) # add Month feature
-    #df = generate_year_feature(df) # add Year feature
 
     # drop features we don't need
     df = df.drop(to_drop, axis=1)
-
-    # append features from store.csv
-    if store is not None:
-        store_to_drop = ['StoreType','Assortment','CompetitionDistance', 'CompetitionOpenSinceMonth',
-                         'CompetitionOpenSinceYear','Promo2','Promo2SinceWeek', 'Promo2SinceYear','PromoInterval']
-        #df['Promo2'] = pd.merge(df, store['Promo2'].astype(int), how='outer')
 
     # one-hot encode StateHoliday
     df['StateHoliday'] = df['StateHoliday'].astype(str)
@@ -107,15 +81,6 @@ def extract_closed_store_ids(df):
     """
     return df[df['Open'] == 0]['Id']
 
-
-train = pd.read_csv(settings.CSV_TRAIN, low_memory=False)
-test = pd.read_csv(settings.CSV_TEST, low_memory=False)
-store = pd.read_csv(settings.CSV_STORE, low_memory=False)
-
-train = prepare_data(train, to_drop=['Date'], has_y=True, store=store)
-train = remove_closed_stores(train)
-
-test = prepare_data(test, to_drop=['Date'], has_y=False, store=store)
 
 
 def split_open_closed(test_df):
@@ -341,6 +306,19 @@ def train_many_keras_models(train_df, test_df, outfile='output.csv', verbose=Fal
     return
 
 
+# read and process datasets
+CSV_TRAIN = 'data/train_v2.csv'
+CSV_TEST = 'data/test_v2.csv'
+
+train = pd.read_csv(CSV_TRAIN, low_memory=False)
+test = pd.read_csv(CSV_TEST, low_memory=False)
+
+train = prepare_data(train, to_drop=['Date'], has_y=True)
+train = remove_closed_stores(train)
+
+test = prepare_data(test, to_drop=['Date'], has_y=False)
+
+# train models
 train_many_models(train, test, outfile='rossmann-lr-per-store.csv', model_type='linear-regression', verbose=False)
 train_many_models(train, test, outfile='rossmann-rf-per-store.csv', model_type='random-forest', verbose=False)
 train_single_model(train, test, outfile='rossmann-lr-all-stores.csv', model_type='linear-regression')
