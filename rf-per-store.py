@@ -54,7 +54,7 @@ def prepare_data(df, to_drop, has_y=False):
     :param has_y: (bool) does the df contain the y variable of interest?
     :return:
     """
-    #df = generate_month_feature(df)
+    # df = generate_month_feature(df)
 
     # drop features we don't need
     df = df.drop(to_drop, axis=1)
@@ -99,6 +99,7 @@ train = remove_closed_stores(train)
 
 test = prepare_data(test, to_drop=['Date'], has_y=False)
 
+
 # print(train.head(n=10))
 
 
@@ -107,6 +108,16 @@ def split_open_closed(test_df):
     test_df = remove_closed_stores(test_df)
     test_df = test_df.drop(['Open'], axis=1)
     return closed_store_ids, test_df
+
+
+def save_for_submission_csv(closed_store_ids, open_store_sales, outfile):
+    open_store_sales = pd.DataFrame(
+        {'Id': open_store_sales.index + 1, 'Sales': np.power(2, open_store_sales.values)})
+    closed_store_sales = pd.DataFrame(
+        {'Id': closed_store_ids + 1, 'Sales': 1})  # 0 sales need to be map to 1 for kaggle
+    submission = pd.concat([open_store_sales, closed_store_sales])
+    submission.to_csv(outfile, index=False)
+    return
 
 
 def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False):
@@ -118,6 +129,7 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
     :param outfile: name of the output file to write predictions to
     :return:
     """
+    print('\nTraining many RF model')
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
 
@@ -133,7 +145,7 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
         train_y = current_store['Sales']
 
         test_x = test_stores[i].copy()
-        test_store_ids = test_x['Id']
+        open_store_ids = test_x['Id']
         test_x = test_x.drop(['Id', 'Store'], axis=1)
 
         model = LinearRegression()
@@ -142,25 +154,44 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
         train_scores.append(model.score(train_x, train_y))
 
         # append predicted values of current store to submission
-        open_store_sales = open_store_sales.append(pd.Series(test_y, index=test_store_ids))
+        open_store_sales = open_store_sales.append(pd.Series(test_y, index=open_store_ids))
 
         if verbose:
             print('Completed Store %d: train_score=%.5f' % (i, train_scores[-1]))
 
     # save to csv file
-    open_store_sales = pd.DataFrame(
-        {'Id': open_store_sales.index + 1, 'Sales': np.power(2, open_store_sales.values)})
-    closed_store_sales = pd.DataFrame(
-        {'Id': closed_store_ids + 1, 'Sales': 1})  # 0 sales need to be map to 1 for kaggle
-
-    submission = pd.concat([open_store_sales, closed_store_sales])
-    submission.to_csv(outfile, index=False)
+    save_for_submission_csv(closed_store_ids, open_store_sales, outfile)
     print('mean(train_score)=%.5f' % np.mean(train_scores))
     print('sd(train_score)=%.5f' % np.std(train_scores))
     print('done: wrote predictions to %s' % outfile)
     return
 
 
+def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
+    print('\nTraining monolithic RF model')
+    # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
+    closed_store_ids, test_df = split_open_closed(test_df)
+
+    train_y = train_df['Sales']
+    train_x = train_df.drop(['Id', 'Sales', 'Open'], axis=1)
+
+    open_store_ids = test_df['Id']
+    test_x = test_df.drop(['Id'], axis=1)
+
+    model = LinearRegression()
+    model.fit(train_x, train_y)
+
+    test_y = model.predict(test_x)
+    train_score = model.score(train_x, train_y)
+
+    open_store_sales = pd.Series().append(pd.Series(test_y, index=open_store_ids))
+
+    # save to csv file
+    save_for_submission_csv(closed_store_ids, open_store_sales, outfile)
+    print('train_score=%.5f' % train_score)
+    print('done: wrote predictions to %s' % outfile)
+    return
 
 
-train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=True)
+train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=False)
+train_monolithic_rf_model(train, test, outfile='rossmann-monolithic-rf.csv')
