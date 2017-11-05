@@ -101,7 +101,7 @@ test = prepare_data(test, to_drop=['Date'], has_y=False)
 
 
 
-def train_many_rf_models(train_df, test_df, outfile='output.csv'):
+def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False):
     """
     Trains a random forest for each store and generates predictions for all testing input
     :param train_df: processed dataframe of training data
@@ -137,7 +137,9 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv'):
 
         # append predicted values of current store to submission
         open_store_sales = open_store_sales.append(pd.Series(test_y, index=test_store_ids))
-        print('Completed Store %d: train_score=%.5f' % (i, train_scores[-1]))
+
+        if verbose:
+            print('Completed Store %d: train_score=%.5f' % (i, train_scores[-1]))
 
     # save to csv file
     open_store_sales = pd.DataFrame(
@@ -147,8 +149,10 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv'):
 
     submission = pd.concat([open_store_sales, closed_store_sales])
     submission.to_csv(outfile, index=False)
+    print('mean(train_score)=%.5f' % np.mean(train_scores))
+    print('sd(train_score)=%.5f' % np.std(train_scores))
     print('done: wrote predictions to %s' % outfile)
     return
 
 
-train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv')
+train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=True)
