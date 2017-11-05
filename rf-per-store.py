@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import settings
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 
 # feature params
 ALL_FEATURES = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday',
@@ -46,7 +47,18 @@ def generate_month_feature(df):
     return df
 
 
-def prepare_data(df, to_drop, has_y=False):
+def generate_year_feature(df):
+    df['Year'] = df['Date'].str[0:5]
+    df['Year'] = df['Year'].astype(int)
+    return df
+
+
+def get_month_numeric(month):
+    dictionary = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6, 'Jul': 7,
+                  'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
+    return dictionary.get(month, default=None)
+
+def prepare_data(df, to_drop, has_y=False, store=None):
     """
     Performs the common train/test feature engineering procedures
     :param df:
@@ -54,12 +66,17 @@ def prepare_data(df, to_drop, has_y=False):
     :param has_y: (bool) does the df contain the y variable of interest?
     :return:
     """
-    #df = generate_month_feature(df)
-    #df['Months2December'] = 12 - df['Month']
-    #df.drop('Month', axis=1, inplace=True)
+    #df = generate_month_feature(df) # add Month feature
+    #df = generate_year_feature(df) # add Year feature
 
     # drop features we don't need
     df = df.drop(to_drop, axis=1)
+
+    # append features from store.csv
+    if store is not None:
+        store_to_drop = ['StoreType','Assortment','CompetitionDistance', 'CompetitionOpenSinceMonth',
+                         'CompetitionOpenSinceYear','Promo2','Promo2SinceWeek', 'Promo2SinceYear','PromoInterval']
+        #df['Promo2'] = pd.merge(df, store['Promo2'].astype(int), how='outer')
 
     # recode StateHoliday to something numeric
     df['StateHoliday'] = df['StateHoliday'].astype(str)
@@ -96,10 +113,10 @@ train = pd.read_csv(settings.CSV_TRAIN, low_memory=False)
 test = pd.read_csv(settings.CSV_TEST, low_memory=False)
 store = pd.read_csv(settings.CSV_STORE, low_memory=False)
 
-train = prepare_data(train, to_drop=['Date'], has_y=True)
+train = prepare_data(train, to_drop=['Date'], has_y=True, store=store)
 train = remove_closed_stores(train)
 
-test = prepare_data(test, to_drop=['Date'], has_y=False)
+test = prepare_data(test, to_drop=['Date'], has_y=False, store=store)
 
 
 def split_open_closed(test_df):
@@ -119,17 +136,17 @@ def save_for_submission_csv(closed_store_ids, open_store_sales, outfile):
     return
 
 
-def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False):
+def train_many_models(train_df, test_df, outfile='output.csv', model_type='linear-regression', verbose=False):
     """
     Trains a random forest for each store and generates predictions for all testing input
     :param train_df: processed dataframe of training data
     :param test_df: processed dataframe of testing data (should not have Sales column)
-    :param closed_store_ids: list of stores that are closed in the testing data
+    :param model_type: type of model to train
     :param outfile: name of the output file to write predictions to
     :return:
     """
     print_feature_list = True
-    print('\nTraining many RF model')
+    print('\nTraining many %s models' % model_type)
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
 
@@ -153,7 +170,14 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
         open_store_ids = test_x['Id']
         test_x = test_x.drop(['Id', 'Store'], axis=1)
 
-        model = LinearRegression()
+        model = None
+        if model_type == 'linear-regression':
+            model = LinearRegression()
+        elif model_type == 'random-forest':
+            model = RandomForestRegressor(n_estimators=100, max_depth=10, oob_score=True)
+        else:
+            model = LinearRegression()
+
         model.fit(train_x, train_y)
         test_y = model.predict(test_x)
         train_scores.append(model.score(train_x, train_y))
@@ -172,8 +196,8 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
     return
 
 
-def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
-    print('\nTraining monolithic RF model')
+def train_single_model(train_df, test_df, model_type='linear-regression', outfile='out.csv'):
+    print('\nTraining monolithic %s model' % model_type)
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
 
@@ -184,7 +208,15 @@ def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
     test_x = test_df.drop(['Id', 'Store'], axis=1)
 
     print('Features: %s' % train_x.columns.values.tolist())
-    model = LinearRegression()
+
+    model = None
+    if model_type == 'linear-regression':
+        model = LinearRegression()
+    elif model_type == 'random-forest':
+        model = RandomForestRegressor(n_estimators=100, max_depth=10, oob_score=True)
+    else:
+        model = LinearRegression()
+
     model.fit(train_x, train_y)
 
     test_y = model.predict(test_x)
@@ -199,5 +231,7 @@ def train_monolithic_rf_model(train_df, test_df, outfile='out.csv'):
     return
 
 
-train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=False)
-#train_monolithic_rf_model(train, test, outfile='rossmann-monolithic-rf.csv')
+train_many_models(train, test, outfile='rossmann-lr-per-store.csv', model_type='linear-regression', verbose=False)
+train_many_models(train, test, outfile='rossmann-rf-per-store.csv', model_type='random-forest', verbose=False)
+train_single_model(train, test, outfile='rossmann-lr-all-stores.csv', model_type='linear-regression')
+train_single_model(train, test, outfile='rossmann-rf-all-stores.csv', model_type='random-forest')
