@@ -5,6 +5,8 @@ import numpy as np
 import settings
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
+from keras.models import Sequential
+from keras.layers import Dense
 
 # feature params
 ALL_FEATURES = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday',
@@ -237,7 +239,105 @@ def train_single_model(train_df, test_df, model_type='linear-regression', outfil
     return
 
 
+def train_single_keras_model(train_df, test_df, outfile='out.csv'):
+    print('\nTraining keras model')
+    # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
+    closed_store_ids, test_df = split_open_closed(test_df)
+
+    train_y = train_df['Sales']
+    train_x = train_df.drop(['Id', 'Sales', 'Open', 'Store'], axis=1)
+
+    open_store_ids = test_df['Id']
+    test_x = test_df.drop(['Id', 'Store'], axis=1)
+
+    print('Features: %s' % train_x.columns.values.tolist())
+
+    # cast to numpy arrays for keras
+    train_x = np.array(train_x)
+    train_y = np.array(train_y)
+    test_x = np.array(test_x)
+
+    # create model
+    model = Sequential()
+    model.add(Dense(np.shape(train_x)[1], input_dim=np.shape(train_x)[1], kernel_initializer='normal', activation='relu'))
+    model.add(Dense(512, kernel_initializer='normal'))
+    model.add(Dense(64, kernel_initializer='normal'))
+    model.add(Dense(1))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+
+    model.fit(train_x, train_y, epochs=25, batch_size=64, verbose=0, shuffle=True)
+    test_y = model.predict(test_x)
+
+    open_store_sales = pd.Series().append(pd.Series(test_y.ravel(), index=open_store_ids))
+    save_for_submission_csv(closed_store_ids, open_store_sales, outfile)
+    print('done: wrote predictions to %s' % outfile)
+    return
+
+
+def train_many_keras_models(train_df, test_df, outfile='output.csv', verbose=False):
+    """
+    Trains a random forest for each store and generates predictions for all testing input
+    :param train_df: processed dataframe of training data
+    :param test_df: processed dataframe of testing data (should not have Sales column)
+    :param model_type: type of model to train
+    :param outfile: name of the output file to write predictions to
+    :return:
+    """
+    print_feature_list = True
+    print('\nTraining many keras models')
+    # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
+    closed_store_ids, test_df = split_open_closed(test_df)
+
+    train_stores = dict(list(train_df.groupby('Store')))
+    test_stores = dict(list(test_df.groupby('Store')))
+    open_store_sales = pd.Series()
+    for i in test_stores:
+        current_store = train_stores[i]
+
+        # define training and testing sets
+        train_x = current_store.drop(['Id', 'Sales', 'Store', 'Open'], axis=1)
+
+        if print_feature_list:
+            print('Features: %s' % train_x.columns.values.tolist())
+            print_feature_list = False
+
+        train_y = current_store['Sales']
+
+        test_x = test_stores[i].copy()
+        open_store_ids = test_x['Id']
+        test_x = test_x.drop(['Id', 'Store'], axis=1)
+
+        # cast to numpy arrays for keras
+        train_x = np.array(train_x)
+        train_y = np.array(train_y)
+        test_x = np.array(test_x)
+
+        # create model
+        model = Sequential()
+        model.add(Dense(np.shape(train_x)[1], input_dim=np.shape(train_x)[1], kernel_initializer='normal', activation='relu'))
+        model.add(Dense(512, kernel_initializer='normal'))
+        model.add(Dense(64, kernel_initializer='normal'))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error', optimizer='adam')
+
+        model.fit(train_x, train_y, epochs=50, batch_size=32, verbose=0, shuffle=True)
+        test_y = model.predict(test_x)
+
+        # append predicted values of current store to submission
+        open_store_sales = open_store_sales.append(pd.Series(test_y.ravel(), index=open_store_ids))
+
+        if verbose:
+            print('Completed Store %d' % i)
+
+    # save to csv file
+    save_for_submission_csv(closed_store_ids, open_store_sales, outfile)
+    print('done: wrote predictions to %s' % outfile)
+    return
+
+
 train_many_models(train, test, outfile='rossmann-lr-per-store.csv', model_type='linear-regression', verbose=False)
 train_many_models(train, test, outfile='rossmann-rf-per-store.csv', model_type='random-forest', verbose=False)
 train_single_model(train, test, outfile='rossmann-lr-all-stores.csv', model_type='linear-regression')
 train_single_model(train, test, outfile='rossmann-rf-all-stores.csv', model_type='random-forest')
+train_single_keras_model(train, test, outfile='rossmann-keras-all.csv')
+train_many_keras_models(train, test, outfile='rossmann-keras-all.csv', verbose=True)
