@@ -6,6 +6,10 @@ import settings
 from sklearn.linear_model import LinearRegression
 
 # feature params
+ALL_FEATURES = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday',
+                'SchoolHoliday', 'StoreType', 'Assortment', 'CompetitionDistance',
+                'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Promo2', 'Promo2SinceWeek',
+                'Promo2SinceYear', 'PromoInterval', 'DateOfCompetitionOpen', 'IsInCompetition']
 TRAIN_FEATURES = []
 TEST_FEATURES = list(TRAIN_FEATURES)
 
@@ -36,13 +40,21 @@ def one_hot_encode(df, target, prefix, excludes=None):
     return df.join(dummy)
 
 
-def prepare_data(df, to_drop):
+def generate_month_feature(df):
+    df['Month'] = df['Date'].str[5:7]
+    df['Month'] = df['Month'].astype(int)
+    return df
+
+
+def prepare_data(df, to_drop, has_y=False):
     """
     Performs the common train/test feature engineering procedures
     :param df:
     :param to_drop: (list) of column names to drop from both train and test sets
     :return:
     """
+    #df = generate_month_feature(df)
+
     # drop features we don't need
     df = df.drop(to_drop, axis=1)
 
@@ -50,11 +62,21 @@ def prepare_data(df, to_drop):
     df['StateHoliday'] = df['StateHoliday'].astype(str)
     df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'c'], [0, 1, 2])
 
+    # norm customers
+    df['Customers'] = df['Customers'].replace([0], [1])  # prevent nans
+    df['Customers'] = np.log2(df['Customers'])
+
     # one-hot encode dayofweek
     df = one_hot_encode(df, 'DayOfWeek', 'Day', ['Day_7'])
 
     # append Id column
     df['Id'] = df.index
+
+
+    # normalize sales (only applicable for training data)
+    if has_y:
+        df['Sales'] = df['Sales'].replace([0], [1])  # prevent nans
+        df['Sales'] = np.log2(df['Sales'])
 
     return df
 
@@ -70,21 +92,16 @@ def extract_closed_store_ids(df):
 
 train = pd.read_csv(settings.CSV_TRAIN, low_memory=False)
 test = pd.read_csv(settings.CSV_TEST, low_memory=False)
+store = pd.read_csv(settings.CSV_STORE, low_memory=False)
 
-train = prepare_data(train, to_drop=['Customers', 'Date'])
-test = prepare_data(test, to_drop=['Customers', 'Date'])
+train = prepare_data(train, to_drop=['Date'], has_y=True)
+test = prepare_data(test, to_drop=['Date'], has_y=False)
 
-# normalize sales
-train['Sales'] = train['Sales'].replace([0], [1])  # prevent nans
-train['Sales'] = np.log2(train['Sales'])
 # print(train.head(n=10))
 
-closed_store_ids = extract_closed_store_ids(test)
-test = remove_closed_stores(test)
-test = test.drop(['Open'], axis=1)
 
 
-def train_models(train_df, test_df, closed_store_ids, outfile='output.csv'):
+def train_many_rf_models(train_df, test_df, outfile='output.csv'):
     """
     Trains a random forest for each store and generates predictions for all testing input
     :param train_df: processed dataframe of training data
@@ -93,26 +110,25 @@ def train_models(train_df, test_df, closed_store_ids, outfile='output.csv'):
     :param outfile: name of the output file to write predictions to
     :return:
     """
+    # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
+    closed_store_ids = extract_closed_store_ids(test_df)
+    test_df = remove_closed_stores(test_df)
+    test_df = test_df.drop(['Open'], axis=1)
+
     train_stores = dict(list(train_df.groupby('Store')))
     test_stores = dict(list(test_df.groupby('Store')))
     open_store_sales = pd.Series()
     train_scores = []
     for i in test_stores:
-        # current store
         current_store = train_stores[i]
 
         # define training and testing sets
         train_x = current_store.drop(['Id', 'Sales', 'Store', 'Open'], axis=1)
         train_y = current_store['Sales']
-        # print(X_train)
-        # print(Y_train)
 
         test_x = test_stores[i].copy()
         test_store_ids = test_x['Id']
         test_x = test_x.drop(['Id', 'Store'], axis=1)
-        # X_test['Customers'] = np.log2(X_test['Customers'] + 1)
-        # X_test.drop(['Customers'], axis=1, inplace=True)
-        # print(X_test)
 
         model = LinearRegression()
         model.fit(train_x, train_y)
@@ -132,6 +148,7 @@ def train_models(train_df, test_df, closed_store_ids, outfile='output.csv'):
     submission = pd.concat([open_store_sales, closed_store_sales])
     submission.to_csv(outfile, index=False)
     print('done: wrote predictions to %s' % outfile)
+    return
 
 
-train_models(train, test, closed_store_ids, outfile='rossmann-rf-per-store.csv')
+train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv')
