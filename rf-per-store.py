@@ -78,9 +78,12 @@ def prepare_data(df, to_drop, has_y=False, store=None):
                          'CompetitionOpenSinceYear','Promo2','Promo2SinceWeek', 'Promo2SinceYear','PromoInterval']
         #df['Promo2'] = pd.merge(df, store['Promo2'].astype(int), how='outer')
 
-    # recode StateHoliday to something numeric
+    # one-hot encode StateHoliday
     df['StateHoliday'] = df['StateHoliday'].astype(str)
-    df['StateHoliday'] = df['StateHoliday'].replace(['0', 'a', 'b', 'c'], [0, 1, 2, 3])
+    df = one_hot_encode(df, 'StateHoliday', 'StateHoliday', excludes=None)
+    for var in ['StateHoliday_0', 'StateHoliday_a', 'StateHoliday_b', 'StateHoliday_c']:
+        if var not in df.columns.values:
+            df[var] = 0
 
     # norm customers using log_2
     df['Customers'] = df['Customers'].replace([0], [0.0001])  # prevent nans
@@ -88,6 +91,9 @@ def prepare_data(df, to_drop, has_y=False, store=None):
 
     # one-hot encode dayofweek
     df = one_hot_encode(df, 'DayOfWeek', 'Day', excludes=None)
+    for var in ['Day_1', 'Day_2', 'Day_3', 'Day_4', 'Day_5', 'Day_6', 'Day_7']:
+        if var not in df.columns.values:
+            df[var] = 0
 
     # append Id column
     df['Id'] = df.index
