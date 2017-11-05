@@ -51,6 +51,7 @@ def prepare_data(df, to_drop, has_y=False):
     Performs the common train/test feature engineering procedures
     :param df:
     :param to_drop: (list) of column names to drop from both train and test sets
+    :param has_y: (bool) does the df contain the y variable of interest?
     :return:
     """
     #df = generate_month_feature(df)
@@ -71,7 +72,6 @@ def prepare_data(df, to_drop, has_y=False):
 
     # append Id column
     df['Id'] = df.index
-
 
     # normalize sales (only applicable for training data)
     if has_y:
@@ -95,10 +95,18 @@ test = pd.read_csv(settings.CSV_TEST, low_memory=False)
 store = pd.read_csv(settings.CSV_STORE, low_memory=False)
 
 train = prepare_data(train, to_drop=['Date'], has_y=True)
+train = remove_closed_stores(train)
+
 test = prepare_data(test, to_drop=['Date'], has_y=False)
 
 # print(train.head(n=10))
 
+
+def split_open_closed(test_df):
+    closed_store_ids = extract_closed_store_ids(test_df)
+    test_df = remove_closed_stores(test_df)
+    test_df = test_df.drop(['Open'], axis=1)
+    return closed_store_ids, test_df
 
 
 def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False):
@@ -111,9 +119,7 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
     :return:
     """
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
-    closed_store_ids = extract_closed_store_ids(test_df)
-    test_df = remove_closed_stores(test_df)
-    test_df = test_df.drop(['Open'], axis=1)
+    closed_store_ids, test_df = split_open_closed(test_df)
 
     train_stores = dict(list(train_df.groupby('Store')))
     test_stores = dict(list(test_df.groupby('Store')))
@@ -153,6 +159,8 @@ def train_many_rf_models(train_df, test_df, outfile='output.csv', verbose=False)
     print('sd(train_score)=%.5f' % np.std(train_scores))
     print('done: wrote predictions to %s' % outfile)
     return
+
+
 
 
 train_many_rf_models(train, test, outfile='rossmann-rf-per-store.csv', verbose=True)
