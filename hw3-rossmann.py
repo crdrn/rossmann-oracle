@@ -1,5 +1,4 @@
 #!/usr/bin/python3.5
-import sys
 import pandas as pd
 import numpy as np
 import settings
@@ -7,14 +6,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from keras.models import Sequential
 from keras.layers import Dense
-
-# feature params
-ALL_FEATURES = ['Store', 'DayOfWeek', 'Date', 'Sales', 'Customers', 'Open', 'Promo', 'StateHoliday',
-                'SchoolHoliday', 'StoreType', 'Assortment', 'CompetitionDistance',
-                'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Promo2', 'Promo2SinceWeek',
-                'Promo2SinceYear', 'PromoInterval', 'DateOfCompetitionOpen', 'IsInCompetition']
-TRAIN_FEATURES = []
-TEST_FEATURES = list(TRAIN_FEATURES)
 
 
 def remove_closed_stores(df):
