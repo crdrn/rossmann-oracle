@@ -146,7 +146,7 @@ def save_for_submission_csv(closed_store_ids, open_store_sales, outfile):
 
 def train_many_models(train_df, test_df, outfile='output.csv', model_type='linear-regression', verbose=False):
     """
-    Trains a random forest for each store and generates predictions for all testing input
+    Trains a random forest/linear regressor for each store and generates predictions for all testing input
     :param train_df: processed dataframe of training data
     :param test_df: processed dataframe of testing data (should not have Sales column)
     :param model_type: type of model to train
@@ -205,6 +205,14 @@ def train_many_models(train_df, test_df, outfile='output.csv', model_type='linea
 
 
 def train_single_model(train_df, test_df, model_type='linear-regression', outfile='out.csv'):
+    """
+    Trains a "monolithic" model (i.e. across all stores)
+    :param train_df: processed dataframe of training data
+    :param test_df: processed dataframe of testing data (should not have Sales column)
+    :param model_type: type of model to train
+    :param outfile: name of the output file to write predictions to
+    :return:
+    """
     print('\nTraining monolithic %s model' % model_type)
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
@@ -240,6 +248,13 @@ def train_single_model(train_df, test_df, model_type='linear-regression', outfil
 
 
 def train_single_keras_model(train_df, test_df, outfile='out.csv'):
+    """
+    Trains a keras neural network over all stores.
+    :param train_df: processed dataframe of training data
+    :param test_df: processed dataframe of testing data (should not have Sales column)
+    :param outfile: name of the output file to write predictions to
+    :return:
+    """
     print('\nTraining keras model')
     # special case for closed stores where sales = 0 (or 1 for kaggle's purposes)
     closed_store_ids, test_df = split_open_closed(test_df)
@@ -276,11 +291,11 @@ def train_single_keras_model(train_df, test_df, outfile='out.csv'):
 
 def train_many_keras_models(train_df, test_df, outfile='output.csv', verbose=False):
     """
-    Trains a random forest for each store and generates predictions for all testing input
+    Trains a keras neural network for each store and generates predictions for all testing input
     :param train_df: processed dataframe of training data
     :param test_df: processed dataframe of testing data (should not have Sales column)
-    :param model_type: type of model to train
     :param outfile: name of the output file to write predictions to
+    :param verbose: verbosity
     :return:
     """
     print_feature_list = True
