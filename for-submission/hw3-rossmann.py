@@ -320,8 +320,8 @@ test = prepare_data(test, to_drop=['Date'], has_y=False)
 
 # train models
 train_many_models(train, test, outfile='rossmann-lr-per-store.csv', model_type='linear-regression', verbose=False)
-train_many_models(train, test, outfile='rossmann-rf-per-store.csv', model_type='random-forest', verbose=False)
-train_single_model(train, test, outfile='rossmann-lr-all-stores.csv', model_type='linear-regression')
-train_single_model(train, test, outfile='rossmann-rf-all-stores.csv', model_type='random-forest')
-train_single_keras_model(train, test, outfile='rossmann-keras-all-stores.csv')
-train_many_keras_models(train, test, outfile='rossmann-keras-per-store.csv', verbose=True)
+#train_many_models(train, test, outfile='rossmann-rf-per-store.csv', model_type='random-forest', verbose=False)
+#train_single_model(train, test, outfile='rossmann-lr-all-stores.csv', model_type='linear-regression')
+#train_single_model(train, test, outfile='rossmann-rf-all-stores.csv', model_type='random-forest')
+#train_single_keras_model(train, test, outfile='rossmann-keras-all-stores.csv')
+#train_many_keras_models(train, test, outfile='rossmann-keras-per-store.csv', verbose=True)
