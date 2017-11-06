@@ -1,2 +1,5 @@
 tensorflow==1.4.0
+Keras==2.0.9
 pandas==0.21.0
+numpy==1.13.3
+scikit_learn==0.19.1
