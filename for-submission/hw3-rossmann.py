@@ -307,8 +307,8 @@ def train_many_keras_models(train_df, test_df, outfile='output.csv', verbose=Fal
 
 
 # read and process datasets
-CSV_TRAIN = 'data/train_v2.csv'
-CSV_TEST = 'data/test_v2.csv'
+CSV_TRAIN = 'train_v2.csv'
+CSV_TEST = 'test_v2.csv'
 
 train = pd.read_csv(CSV_TRAIN, low_memory=False)
 test = pd.read_csv(CSV_TEST, low_memory=False)
